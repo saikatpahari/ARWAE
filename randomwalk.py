@@ -1,11 +1,10 @@
 # encoding=utf8
 
+import scipy.sparse
+import scipy.sparse as sp
 import networkx as nx
 import numpy as np
 import collections
-
-import scipy.sparse
-import scipy.sparse as sp
 
 from sklearn import preprocessing
 from sklearn.utils.extmath import randomized_svd
@@ -17,26 +16,21 @@ import theano
 from theano import tensor
 
 
-def svd_deepwalk_matrix(X, dim):
-    u, s, v = scipy.sparse.linalg.svds(X, dim, return_singular_vectors="u")
-    return scipy.sparse.diags(np.sqrt(s)).dot(u.T).T
+def randomwalk_matrix(M, window, Neg_minus):
 
-
-def direct_compute_deepwalk_matrix(T, window, Neg_minus):
-
-    n = T.shape[0]
+    n = M.shape[0]
     ne1 = Neg_minus.copy()
     ne2 = Neg_minus.copy()
 
-    Tr = np.zeros_like(T)
+    Tr = np.zeros_like(M)
     Tr_power = sp.identity(n)
 
     for i in range(window):
-        Tr_power = Tr_power.dot(T)
+        Tr_power = Tr_power.dot(M)
         Tr += Tr_power
 
     TF1 = Tr.dot(ne1)
-    TF2 = ne2.dot(Tr.T)
+    TF2 = ne2.dot(Tr.M)
     S = 0.5 * (TF1 + TF2)
     S *= n / window
 
@@ -126,13 +120,11 @@ class RandomWalk():
         self.matrix2 = scipy.sparse.csr_matrix(matrix2)
         self.matrix_conn = scipy.sparse.csr_matrix(matrix_conn)
 
-    def get_embedding_rand(self, matrix):
-        t1 = time.time()
-        smat = scipy.sparse.csc_matrix(matrix)
-        U, Sigma, VT = randomized_svd(smat, n_components=self.dimension, n_iter=5, random_state=None)
-        U = U * np.sqrt(Sigma)
-        U = preprocessing.normalize(U, "l2")
-        return U
+    def decomposition(M, nb):
+    model = NMF(n_components=nb, init='random', random_state=0)   
+    U = model.fit_transform(M);
+    V = model.components_;
+    return W, H
 
     def trans_mat(self, matA, matB, matC, matConn, attWeight, alpha, step):
         strWeight = 1 - attWeight
@@ -182,7 +174,7 @@ class RandomWalk():
         Tran = scipy.sparse.vstack((Tran_AB, Tran_C0))
 
         Tran = Tran.tocsr()
-        F_zzz = direct_compute_deepwalk_matrix(T=Tran, window=step, Neg_minus=diag_F_minus)
+        F_zzz = randomwalk_matrix(M=Tran, window=step, Neg_minus=diag_F_minus)
 
         features_matrix = self.get_embedding_rand(F_zzz)
 
