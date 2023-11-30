@@ -16,9 +16,9 @@ import theano
 from theano import tensor
 
 
-def randomwalk_matrix(M, window, Neg_minus):
+def randomwalk_matrix(Q, window, Neg_minus):
 
-    n = M.shape[0]
+    n = Q.shape[0]
     ne1 = Neg_minus.copy()
     ne2 = Neg_minus.copy()
 
@@ -38,7 +38,7 @@ def randomwalk_matrix(M, window, Neg_minus):
     f = theano.function([m], tensor.log(tensor.maximum(m, 1)))
     Y = f(S.todense().astype(theano.config.floatX))
 
-    return sp.csr_matrix(Y)
+    return Q1(Y)
 
 
 class RandomWalk():
@@ -120,13 +120,7 @@ class RandomWalk():
         self.matrix2 = scipy.sparse.csr_matrix(matrix2)
         self.matrix_conn = scipy.sparse.csr_matrix(matrix_conn)
 
-    def decomposition(M, nb):
-    model = NMF(n_components=nb, init='random', random_state=0)   
-    U = model.fit_transform(M);
-    V = model.components_;
-    return W, H
-
-    def trans_mat(self, matA, matB, matC, matConn, attWeight, alpha, step):
+       def trans_mat(self, matA, matB, matC, matConn, attWeight, alpha, step):
         strWeight = 1 - attWeight
 
         TranB = preprocessing.normalize(matConn, "l1")
@@ -174,21 +168,10 @@ class RandomWalk():
         Tran = scipy.sparse.vstack((Tran_AB, Tran_C0))
 
         Tran = Tran.tocsr()
-        F_zzz = randomwalk_matrix(M=Tran, window=step, Neg_minus=diag_F_minus)
+        M = randomwalk_matrix(Q=Tran, window=step, Neg_minus=diag_F_minus)
+        return M
 
-        features_matrix = self.get_embedding_rand(F_zzz)
-
-        return features_matrix
-
-    def save_embedding(self, emb_file, features):
-        f_emb = open(emb_file, 'w')
-        f_emb.write(str(len(features)) + " " + str(features.shape[1]) + "\n")
-        for i in range(len(features)):
-            s = str(i) + " " + " ".join(str(f) for f in features[i].tolist())
-            f_emb.write(s + "\n")
-        f_emb.close()
-
-
+   
 def parse_args():
     parser = argparse.ArgumentParser(description="Run BiasedWalk.")
     parser.add_argument('-graph', nargs='?', default='cora/network.txt',
